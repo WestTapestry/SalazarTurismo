@@ -70,6 +70,81 @@
         }
       }
 
+      /* Capa de Carga Premium (Loader) */
+      #loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #111;
+        z-index: 5000; /* Por encima de todo */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        transition: opacity 0.5s ease;
+        font-family: 'Outfit', sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 400px;
+        width: 100%;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-top: 5px solid #e5b920; /* Dorado */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 25px;
+      }
+      .loader-title {
+        margin: 0 0 10px 0;
+        font-size: 1.5rem;
+        color: #e5b920;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .loader-subtitle {
+        margin: 0 0 25px 0;
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.5;
+      }
+      .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .progress-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #006b3f, #e5b920);
+        border-radius: 10px;
+        transition: width 0.1s ease;
+      }
+      .progress-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #e5b920;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
       /* Interfaz de escaneo simulada sobre la cámara */
       #scanning-overlay {
         position: fixed; 
@@ -150,7 +225,7 @@
       /* Instrucción de interactividad al aparecer */
       #interaction-toast {
         position: fixed;
-        top: 20px;
+        top: 80px;
         left: 50%;
         transform: translateX(-50%);
         background: rgba(0, 0, 0, 0.75);
@@ -177,12 +252,25 @@
         100% { top: 0; }
       }
       @keyframes slideDown {
-        from { top: -50px; opacity: 0; }
-        to { top: 20px; opacity: 1; }
+        from { top: 40px; opacity: 0; }
+        to { top: 80px; opacity: 1; }
       }
     </style>
   </head>
   <body>
+    <!-- Capa de Carga Premium (Loader) -->
+    <div id="loader-overlay">
+      <div class="loader-content">
+        <div class="spinner"></div>
+        <h2 class="loader-title">Cargando Escáner</h2>
+        <p class="loader-subtitle">Iniciando cámara y preparando el modelo 3D de la Plaza Central...</p>
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <span id="progress-text" class="progress-text">Iniciando descarga: 0%</span>
+      </div>
+    </div>
+
     <!-- Header premium de navegación de vuelta -->
     <header id="ar-header">
       <div class="ar-header-content">
@@ -226,8 +314,8 @@
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
-        <!-- Cargamos el modelo 3D de la Plaza Central -->
-        <a-asset-item id="plazaCentralModel" src="Recursos/Animaciones/PlazaCentral.glb"></a-asset-item>
+        <!-- El src se asignará dinámicamente desde JS tras precargar el modelo y reportar progreso -->
+        <a-asset-item id="plazaCentralModel"></a-asset-item>
       </a-assets>
 
       <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
@@ -265,6 +353,23 @@
     </a-scene>
 
     <script>
+      const loaderOverlay = document.getElementById('loader-overlay');
+      const progressBar = document.getElementById('progress-bar');
+      const progressText = document.getElementById('progress-text');
+      const plazaCentralModel = document.getElementById('plazaCentralModel');
+      
+      let modelLoaded = false;
+      let cameraReady = false;
+
+      function checkIfReady() {
+        if (modelLoaded && cameraReady) {
+          loaderOverlay.style.opacity = '0';
+          setTimeout(() => {
+            loaderOverlay.style.display = 'none';
+          }, 500);
+        }
+      }
+
       const overlay = document.getElementById('scanning-overlay');
       const targetEntity = document.getElementById('plazaTargetEntity');
       const worldModelContainer = document.getElementById('worldModelContainer');
@@ -396,13 +501,55 @@
         isDragging = false;
       });
 
-      // Manejar error en caso de que falten archivos .mind
+      // Manejar error en caso de que falten archivos .mind o falle la inicialización
       const scene = document.querySelector('a-scene');
       scene.addEventListener('arError', (e) => {
-         console.warn("Falta compilar el archivo TargetPlaza.mind", e);
-         document.querySelector('h3').innerText = "Falta archivo .mind";
-         document.querySelector('p').innerText = "Verifica que el target en Recursos/TargetsAR/TargetPlaza.mind exista y sea válido.";
+         console.warn("Falta compilar el archivo TargetPlaza.mind o no hay cámara disponible", e);
+         if (progressText) progressText.innerText = "Error al iniciar la experiencia AR.";
+         document.querySelector('h3').innerText = "Error de Escaneo";
+         document.querySelector('p').innerText = "Verifica que tengas permisos de cámara habilitados y que los recursos sean correctos.";
       });
+
+      // Escuchar el evento arReady de MindAR para indicar que la cámara e inicialización del tracking están listas
+      scene.addEventListener('arReady', () => {
+        cameraReady = true;
+        checkIfReady();
+      });
+
+      // Precarga del modelo 3D en segundo plano para evitar fallos de carga y reportar progreso
+      const modelUrl = 'Recursos/Animaciones/PlazaCentral.glb';
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', modelUrl, true);
+      xhr.responseType = 'blob';
+
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          progressBar.style.width = percentComplete + '%';
+          progressText.innerText = `Cargando Plaza Central: ${percentComplete}%`;
+        } else {
+          progressText.innerText = 'Cargando Modelo 3D (30MB)...';
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const blob = xhr.response;
+          const objectURL = URL.createObjectURL(blob);
+          plazaCentralModel.setAttribute('src', objectURL);
+          modelLoaded = true;
+          progressText.innerText = 'Iniciando cámara y tracker...';
+          checkIfReady();
+        } else {
+          progressText.innerText = 'Error al descargar modelo 3D.';
+        }
+      };
+
+      xhr.onerror = () => {
+        progressText.innerText = 'Error de conexión al descargar modelo.';
+      };
+
+      xhr.send();
 
       // Lógica de volver atrás
       const backBtn = document.getElementById('back-btn');

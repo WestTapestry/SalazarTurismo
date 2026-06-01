@@ -14,6 +14,62 @@
     <style>
       body { margin: 0; padding: 0; overflow: hidden; background-color: #111; font-family: 'Outfit', sans-serif; }
       
+      /* Header Premium de navegación */
+      #ar-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(0, 75, 43, 0.85); /* Verde institucional semi-transparente */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 2px solid rgba(229, 185, 32, 0.6); /* Dorado institucional */
+        z-index: 100;
+        padding: 10px 20px;
+        box-sizing: border-box;
+      }
+      .ar-header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+      }
+      .back-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        padding: 6px 14px;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: #e5b920; /* Dorado */
+        border-color: rgba(229, 185, 32, 0.6);
+      }
+      .ar-title {
+        margin: 0;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-family: 'Outfit', sans-serif;
+      }
+      @media (max-width: 480px) {
+        .ar-title {
+          font-size: 0.85rem;
+        }
+      }
+
       /* Interfaz de escaneo simulada sobre la cámara */
       #scanning-overlay {
         position: fixed; 
@@ -127,11 +183,25 @@
     </style>
   </head>
   <body>
+    <!-- Header premium de navegación de vuelta -->
+    <header id="ar-header">
+      <div class="ar-header-content">
+        <a id="back-btn" class="back-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Volver</span>
+        </a>
+        <h1 class="ar-title">Escáner Salazar</h1>
+      </div>
+    </header>
+
     <!-- Capa de instrucciones UI -->
     <div id="scanning-overlay">
       <div class="scan-frame"></div>
-      <h3>Enfoca la Plaza Central</h3>
-      <p>Coloca la cámara frente al afiche o target de la Plaza Central para iniciar la magia.</p>
+      <h3>Enfoca el Target</h3>
+      <p>Coloca la cámara frente al afiche o target para iniciar la magia.</p>
     </div>
 
     <!-- Mensaje de interactividad -->
@@ -333,6 +403,19 @@
          document.querySelector('h3').innerText = "Falta archivo .mind";
          document.querySelector('p').innerText = "Verifica que el target en Recursos/TargetsAR/TargetPlaza.mind exista y sea válido.";
       });
+
+      // Lógica de volver atrás
+      const backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (document.referrer && document.referrer.includes(window.location.host)) {
+            window.history.back();
+          } else {
+            window.location.href = 'index.html';
+          }
+        });
+      }
     </script>
   </body>
 </html>

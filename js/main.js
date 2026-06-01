@@ -146,31 +146,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ==========================================================================
-       5. WebAR Overlay Logic
+       5. WebAR Redirection Logic
        ========================================================================== */
     const openArBtns = document.querySelectorAll('#openArBtn');
-    const closeArBtn = document.getElementById('closeArBtn');
-    const arOverlay = document.getElementById('arOverlay');
-    const arIframe = document.getElementById('arIframe');
 
-    if (arOverlay && arIframe && closeArBtn) {
+    if (openArBtns.length > 0) {
         openArBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Asignar el src al iframe para cargar la experiencia (y pedir permisos de cámara)
-                arIframe.src = 'ar.html';
-                arOverlay.classList.add('active');
-                document.body.style.overflow = 'hidden'; // Evitar scroll
+                // Redirigir directamente a ar.html para evitar problemas de permisos de cámara en iframes en dispositivos móviles
+                window.location.href = 'ar.html';
             });
-        });
-
-        closeArBtn.addEventListener('click', () => {
-            arOverlay.classList.remove('active');
-            document.body.style.overflow = '';
-            // Limpiar el src para apagar la cámara y detener el proceso de AR
-            setTimeout(() => {
-                arIframe.src = '';
-            }, 300); // Esperar a que termine la transición de opacidad
         });
     }
 

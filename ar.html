@@ -307,15 +307,14 @@
 
     <!-- Escena A-Frame + MindAR -->
     <a-scene 
-      mindar-image="imageTargetSrc: Recursos/TargetsAR/TargetPlaza.mind; autoStart: true; uiScanning: no; uiLoading: no;" 
+      mindar-image="imageTargetSrc: Recursos/TargetsAR/targets.mind; autoStart: true; uiScanning: no; uiLoading: no;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights: true" 
       vr-mode-ui="enabled: false" 
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
-        <!-- El src se asignará dinámicamente desde JS tras precargar el modelo y reportar progreso -->
-        <a-asset-item id="plazaCentralModel"></a-asset-item>
+        <a-asset-item id="plazaCentralModel" src="Recursos/Animaciones/PlazaCentral.glb"></a-asset-item>
       </a-assets>
 
       <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
@@ -323,18 +322,35 @@
 
       <!-- 1. El objeto detector original (Mantiene la sincronización de MindAR pero no renderiza nada) -->
       <a-entity mindar-image-target="targetIndex: 0" id="plazaTargetEntity">
-        <!-- Entity vacía, sirve solo para detectar el trigger del target -->
+      </a-entity>
+
+      <!-- Target 1: Pista de Patinaje -->
+      <a-entity mindar-image-target="targetIndex: 1">
+        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#006b3f" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+        <a-text value="Pista de Patinaje" color="#e5b920" position="-0.7 0.5 0" scale="0.8 0.8 0.8"></a-text>
+      </a-entity>
+
+      <!-- Target 2: Iglesia de San Pablo -->
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#e5b920" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+        <a-text value="Iglesia de San Pablo" color="#006b3f" position="-0.8 0.5 0" scale="0.8 0.8 0.8"></a-text>
+      </a-entity>
+      
+      <!-- Target 3: Santuario Virgen de Belen -->
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#ffffff" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+        <a-text value="Santuario Virgen de Belen" color="#006b3f" position="-1.0 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
 
       <!-- 2. Contenedor de la Plaza 3D persistente y flotante en el espacio (Directamente en la escena) -->
       <a-entity id="worldModelContainer" position="0 -0.5 -2" rotation="0 0 0" visible="false">
         
-        <!-- Modelo GLTF con animación automática controlada por JS -->
+        <!-- Modelo GLTF con animación automática controlada por JS (escala aumentada) -->
         <a-gltf-model 
           id="plazaModel" 
           src="#plazaCentralModel" 
           position="0 -0.2 0" 
-          scale="0.04 0.04 0.04" 
+          scale="2.0 2.0 2.0" 
           rotation="0 0 0">
         </a-gltf-model>
         
@@ -342,7 +358,7 @@
         <a-text 
           value="Plaza Central - Salazar" 
           color="#e5b920" 
-          position="0 0.8 0" 
+          position="0 1.5 0" 
           scale="0.6 0.6 0.6" 
           align="center"
           font="https://cdn.aframe.io/fonts/DejaVu-sdf.json"
@@ -357,17 +373,13 @@
       const progressBar = document.getElementById('progress-bar');
       const progressText = document.getElementById('progress-text');
       const plazaCentralModel = document.getElementById('plazaCentralModel');
-      
-      let modelLoaded = false;
-      let cameraReady = false;
 
+      // A-Frame ya maneja la carga de <a-assets>. Ocultaremos el loader en cuanto el AR esté listo.
       function checkIfReady() {
-        if (modelLoaded && cameraReady) {
-          loaderOverlay.style.opacity = '0';
-          setTimeout(() => {
-            loaderOverlay.style.display = 'none';
-          }, 500);
-        }
+        loaderOverlay.style.opacity = '0';
+        setTimeout(() => {
+          loaderOverlay.style.display = 'none';
+        }, 500);
       }
 
       const overlay = document.getElementById('scanning-overlay');
@@ -512,44 +524,10 @@
 
       // Escuchar el evento arReady de MindAR para indicar que la cámara e inicialización del tracking están listas
       scene.addEventListener('arReady', () => {
-        cameraReady = true;
+        if (progressText) progressText.innerText = '¡Cámara Lista!';
+        if (progressBar) progressBar.style.width = '100%';
         checkIfReady();
       });
-
-      // Precarga del modelo 3D en segundo plano para evitar fallos de carga y reportar progreso
-      const modelUrl = 'Recursos/Animaciones/PlazaCentral.glb';
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', modelUrl, true);
-      xhr.responseType = 'blob';
-
-      xhr.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          progressBar.style.width = percentComplete + '%';
-          progressText.innerText = `Cargando Plaza Central: ${percentComplete}%`;
-        } else {
-          progressText.innerText = 'Cargando Modelo 3D (30MB)...';
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          const blob = xhr.response;
-          const objectURL = URL.createObjectURL(blob);
-          plazaCentralModel.setAttribute('src', objectURL);
-          modelLoaded = true;
-          progressText.innerText = 'Iniciando cámara y tracker...';
-          checkIfReady();
-        } else {
-          progressText.innerText = 'Error al descargar modelo 3D.';
-        }
-      };
-
-      xhr.onerror = () => {
-        progressText.innerText = 'Error de conexión al descargar modelo.';
-      };
-
-      xhr.send();
 
       // Lógica de volver atrás
       const backBtn = document.getElementById('back-btn');

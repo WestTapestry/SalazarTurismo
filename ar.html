@@ -1,346 +1,402 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebAR - Escáner Salazar</title>
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- MindAR para A-Frame -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-    <!-- A-Frame Extras para reproducir animaciones GLTF -->
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-    
-    <style>
-      body { margin: 0; padding: 0; overflow: hidden; background-color: #111; font-family: 'Outfit', sans-serif; }
-      
-      /* Header Premium de navegación */
-      #ar-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: rgba(0, 75, 43, 0.85); /* Verde institucional semi-transparente */
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-bottom: 2px solid rgba(229, 185, 32, 0.6); /* Dorado institucional */
-        z-index: 100;
-        padding: 10px 20px;
-        box-sizing: border-box;
-      }
-      .ar-header-content {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-      }
-      .back-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: white;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        padding: 6px 14px;
-        border-radius: 50px;
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        pointer-events: auto;
-        cursor: pointer;
-      }
-      .back-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        color: #e5b920; /* Dorado */
-        border-color: rgba(229, 185, 32, 0.6);
-      }
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebAR - Escáner Salazar</title>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <!-- MindAR para A-Frame -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <!-- A-Frame Extras para reproducir animaciones GLTF -->
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #111;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Header Premium de navegación */
+    #ar-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0, 75, 43, 0.85);
+      /* Verde institucional semi-transparente */
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 2px solid rgba(229, 185, 32, 0.6);
+      /* Dorado institucional */
+      z-index: 100;
+      padding: 10px 20px;
+      box-sizing: border-box;
+    }
+
+    .ar-header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      padding: 6px 14px;
+      border-radius: 50px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      color: #e5b920;
+      /* Dorado */
+      border-color: rgba(229, 185, 32, 0.6);
+    }
+
+    .ar-title {
+      margin: 0;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    @media (max-width: 480px) {
       .ar-title {
-        margin: 0;
-        color: white;
-        font-size: 1rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        font-family: 'Outfit', sans-serif;
-      }
-      @media (max-width: 480px) {
-        .ar-title {
-          font-size: 0.85rem;
-        }
-      }
-
-      /* Interfaz de escaneo simulada sobre la cámara */
-      #scanning-overlay {
-        position: fixed; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 100%;
-        display: flex; 
-        flex-direction: column; 
-        justify-content: center; 
-        align-items: center;
-        z-index: 10; 
-        pointer-events: none; 
-        color: white;
-        background: rgba(0,0,0,0.4);
-        transition: opacity 0.5s ease;
-      }
-      .scan-frame {
-        width: 70vw; 
-        max-width: 300px;
-        height: 70vw; 
-        max-height: 300px;
-        border: 3px dashed rgba(229, 185, 32, 0.8); /* Dorado institucional */
-        border-radius: 20px; 
-        animation: pulse 2s infinite; 
-        margin-bottom: 25px;
-        position: relative;
-      }
-      .scan-frame::after {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 5px;
-        background-color: rgba(0, 107, 63, 0.8); /* Verde institucional */
-        animation: scanline 3s linear infinite;
-        box-shadow: 0 0 10px rgba(0, 107, 63, 0.8);
-      }
-
-      h3 { margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center; font-size: 1.4rem;}
-      p { margin-top: 0; font-size: 0.95rem; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.8); text-align: center; max-width: 80%; line-height: 1.4;}
-
-      /* Botón de reinicio premium */
-      #reset-btn {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 107, 63, 0.85); /* Verde institucional semi-transparente */
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 2px solid rgba(229, 185, 32, 0.6); /* Borde dorado */
-        color: #fff;
-        padding: 12px 24px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        border-radius: 50px;
-        cursor: pointer;
-        z-index: 20;
-        display: none;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        font-family: 'Outfit', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        pointer-events: auto;
-      }
-      #reset-btn:hover {
-        background: rgba(0, 107, 63, 1);
-        border-color: rgba(229, 185, 32, 1);
-        transform: translateX(-50%) scale(1.05);
-        box-shadow: 0 12px 40px rgba(0, 107, 63, 0.4);
-      }
-      #reset-btn:active {
-        transform: translateX(-50%) scale(0.95);
-      }
-
-      /* Instrucción de interactividad al aparecer */
-      #interaction-toast {
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.75);
-        border-left: 4px solid #e5b920;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 6px;
         font-size: 0.85rem;
-        z-index: 20;
-        pointer-events: none;
-        display: none;
-        animation: slideDown 0.5s ease forwards;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      }
+    }
+
+    /* Interfaz de escaneo simulada sobre la cámara */
+    #scanning-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+      color: white;
+      background: rgba(0, 0, 0, 0.4);
+      transition: opacity 0.5s ease;
+    }
+
+    .scan-frame {
+      width: 70vw;
+      max-width: 300px;
+      height: 70vw;
+      max-height: 300px;
+      border: 3px dashed rgba(229, 185, 32, 0.8);
+      /* Dorado institucional */
+      border-radius: 20px;
+      animation: pulse 2s infinite;
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    .scan-frame::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background-color: rgba(0, 107, 63, 0.8);
+      /* Verde institucional */
+      animation: scanline 3s linear infinite;
+      box-shadow: 0 0 10px rgba(0, 107, 63, 0.8);
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      text-align: center;
+      font-size: 1.4rem;
+    }
+
+    p {
+      margin-top: 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      text-align: center;
+      max-width: 80%;
+      line-height: 1.4;
+    }
+
+    /* Botón de reinicio premium */
+    #reset-btn {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 107, 63, 0.85);
+      /* Verde institucional semi-transparente */
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 2px solid rgba(229, 185, 32, 0.6);
+      /* Borde dorado */
+      color: #fff;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      font-family: 'Outfit', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      pointer-events: auto;
+    }
+
+    #reset-btn:hover {
+      background: rgba(0, 107, 63, 1);
+      border-color: rgba(229, 185, 32, 1);
+      transform: translateX(-50%) scale(1.05);
+      box-shadow: 0 12px 40px rgba(0, 107, 63, 0.4);
+    }
+
+    #reset-btn:active {
+      transform: translateX(-50%) scale(0.95);
+    }
+
+    /* Instrucción de interactividad al aparecer */
+    #interaction-toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      border-left: 4px solid #e5b920;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+      animation: slideDown 0.5s ease forwards;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.98);
+        opacity: 0.6;
       }
 
-      @keyframes pulse {
-        0% { transform: scale(0.98); opacity: 0.6; }
-        50% { transform: scale(1.02); opacity: 1; }
-        100% { transform: scale(0.98); opacity: 0.6; }
+      50% {
+        transform: scale(1.02);
+        opacity: 1;
       }
-      @keyframes scanline {
-        0% { top: 0; }
-        50% { top: 100%; }
-        100% { top: 0; }
-      }
-      @keyframes slideDown {
-        from { top: 40px; opacity: 0; }
-        to { top: 80px; opacity: 1; }
-      }
-    </style>
-  </head>
-  <body>
 
-    <!-- Header premium de navegación de vuelta -->
-    <header id="ar-header">
-      <div class="ar-header-content">
-        <a id="back-btn" class="back-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-          <span>Volver</span>
-        </a>
-        <h1 class="ar-title">Escáner Salazar</h1>
-      </div>
-    </header>
+      100% {
+        transform: scale(0.98);
+        opacity: 0.6;
+      }
+    }
 
-    <!-- Capa de instrucciones UI -->
-    <div id="scanning-overlay">
-      <div class="scan-frame"></div>
-      <h3>Enfoca el Target</h3>
-      <p>Coloca la cámara frente al afiche o target para iniciar la magia.</p>
+    @keyframes scanline {
+      0% {
+        top: 0;
+      }
+
+      50% {
+        top: 100%;
+      }
+
+      100% {
+        top: 0;
+      }
+    }
+
+    @keyframes slideDown {
+      from {
+        top: 40px;
+        opacity: 0;
+      }
+
+      to {
+        top: 80px;
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header premium de navegación de vuelta -->
+  <header id="ar-header">
+    <div class="ar-header-content">
+      <a id="back-btn" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Volver</span>
+      </a>
+      <h1 class="ar-title">Escáner Salazar</h1>
     </div>
+  </header>
 
-    <!-- Mensaje de interactividad -->
-    <div id="interaction-toast">
-      <span>✨ ¡Magia activada! El modelo seguirá visible aunque dejes de apuntar.</span>
-    </div>
+  <!-- Capa de instrucciones UI -->
+  <div id="scanning-overlay">
+    <div class="scan-frame"></div>
+    <h3>Enfoca el Target</h3>
+    <p>Coloca la cámara frente al afiche o target para iniciar la magia.</p>
+  </div>
 
-    <!-- Botón para reiniciar el escaneo y animación -->
-    <button id="reset-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-      </svg>
-      Volver a Escanear
-    </button>
+  <!-- Mensaje de interactividad -->
+  <div id="interaction-toast">
+    <span>✨ ¡Magia activada! El modelo seguirá visible aunque dejes de apuntar.</span>
+  </div>
 
-    <script>
-      AFRAME.registerComponent('ar-persistent-model', {
-        schema: { target: { type: 'selector' } },
-        init: function () {
-          this.targetEl = this.data.target;
-          this.targetEl.addEventListener('targetFound', () => {
-            this.el.setAttribute('visible', 'true');
-            this.el.setAttribute('data-active', 'true');
-            
-            // Ocultar overlay de escaneo y mostrar controles
-            document.getElementById('scanning-overlay').style.display = 'none';
-            document.getElementById('reset-btn').style.display = 'flex';
-            
-            // Mostrar notificación breve
-            const toast = document.getElementById('interaction-toast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 6000);
-          });
-        },
-        tick: function () {
-          // Si el target original de MindAR está visible, sincronizamos su posición 3D.
-          // Cuando se deja de apuntar, MindAR lo hace invisible, así que este tick dejará de actualizar 
-          // la posición y el modelo se quedará "congelado" y persistente en la pantalla.
-          if (this.targetEl.getAttribute('visible') && this.el.getAttribute('data-active') === 'true') {
-            const target3D = this.targetEl.object3D;
-            this.el.object3D.position.copy(target3D.position);
-            this.el.object3D.rotation.copy(target3D.rotation);
-            this.el.object3D.scale.copy(target3D.scale);
+  <!-- Botón para reiniciar el escaneo y animación -->
+  <button id="reset-btn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+    </svg>
+    Volver a Escanear
+  </button>
+
+  <script>
+    AFRAME.registerComponent('persistent-target', {
+      init: function () {
+        this.el.addEventListener('targetFound', () => {
+          this.el.setAttribute('data-found', 'true');
+          document.getElementById('scanning-overlay').style.display = 'none';
+          document.getElementById('reset-btn').style.display = 'flex';
+          document.getElementById('interaction-toast').style.display = 'block';
+          setTimeout(() => { document.getElementById('interaction-toast').style.display = 'none'; }, 6000);
+        });
+        this.el.addEventListener('targetLost', () => {
+          if (this.el.getAttribute('data-found') === 'true') {
+            // MindAR oculta el elemento por defecto. Lo forzamos a mostrarse de nuevo.
+            setTimeout(() => { this.el.setAttribute('visible', 'true'); }, 10);
           }
+        });
+      }
+    });
+  </script>
+
+  <!-- Escena A-Frame + MindAR -->
+  <a-scene
+    mindar-image="imageTargetSrc: Recursos/TargetsAR/targets.mind; autoStart: true; uiScanning: no; uiLoading: no;"
+    color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true" vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <a-asset-item id="plazaCentralModel" src="Recursos/Animaciones/PlazaCentral.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
+    <a-camera position="0 0 0" look-controls="enabled: true; touchEnabled: false"></a-camera>
+
+    <!-- Target 0: Plaza Central -->
+    <a-entity mindar-image-target="targetIndex: 0" persistent-target>
+      <!-- Modelo GLTF con animación automática (Posicionado más abajo y con escala ajustada) -->
+      <a-gltf-model src="#plazaCentralModel" position="0 -1 0" scale="2.5 2.5 2.5" rotation="0 0 0"
+        animation-mixer></a-gltf-model>
+      <a-text value="Plaza Central - Salazar" color="#e5b920" position="0 1.5 0" scale="0.6 0.6 0.6" align="center"
+        font="https://cdn.aframe.io/fonts/DejaVu-sdf.json"
+        font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png"></a-text>
+    </a-entity>
+
+    <!-- Target 1: Pista de Patinaje -->
+    <a-entity mindar-image-target="targetIndex: 1" persistent-target>
+      <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#006b3f" opacity="0.9"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+      <a-text value="Pista de Patinaje" color="#e5b920" position="-0.7 0.5 0" scale="0.8 0.8 0.8"></a-text>
+    </a-entity>
+
+    <!-- Target 2: Iglesia de San Pablo -->
+    <a-entity mindar-image-target="targetIndex: 2" persistent-target>
+      <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#e5b920" opacity="0.9"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+      <a-text value="Iglesia de San Pablo" color="#006b3f" position="-0.8 0.5 0" scale="0.8 0.8 0.8"></a-text>
+    </a-entity>
+
+    <!-- Target 3: Santuario Virgen de Belen -->
+    <a-entity mindar-image-target="targetIndex: 3" persistent-target>
+      <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#ffffff" opacity="0.9"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
+      <a-text value="Santuario Virgen de Belen" color="#006b3f" position="-1.0 0.5 0" scale="0.8 0.8 0.8"></a-text>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+
+    // Lógica de Reinicio ("Volver a Escanear")
+    const resetBtn = document.getElementById('reset-btn');
+    const overlay = document.getElementById('scanning-overlay');
+
+    resetBtn.addEventListener('click', () => {
+      // Mostrar la interfaz de escaneo nuevamente
+      overlay.style.display = 'flex';
+      resetBtn.style.display = 'none';
+
+      // Ocultar todos los modelos persistentes y reiniciar su estado
+      const targets = document.querySelectorAll('[persistent-target]');
+      targets.forEach(t => {
+        t.removeAttribute('data-found');
+        t.setAttribute('visible', 'false');
+      });
+    });
+
+    // Manejar error en caso de que falten archivos .mind o falle la inicialización
+    const scene = document.querySelector('a-scene');
+    scene.addEventListener('arError', (e) => {
+      console.warn("Falta compilar el archivo TargetPlaza.mind o no hay cámara disponible", e);
+      if (progressText) progressText.innerText = "Error al iniciar la experiencia AR.";
+      document.querySelector('h3').innerText = "Error de Escaneo";
+      document.querySelector('p').innerText = "Verifica que tengas permisos de cámara habilitados y que los recursos sean correctos.";
+    });
+
+
+    // Lógica de volver atrás
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (document.referrer && document.referrer.includes(window.location.host)) {
+          window.history.back();
+        } else {
+          window.location.href = 'index.html';
         }
       });
-    </script>
+    }
+  </script>
+</body>
 
-    <!-- Escena A-Frame + MindAR -->
-    <a-scene 
-      mindar-image="imageTargetSrc: Recursos/TargetsAR/targets.mind; autoStart: true; uiScanning: no; uiLoading: no;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights: true" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <a-asset-item id="plazaCentralModel" src="Recursos/Animaciones/PlazaCentral.glb"></a-asset-item>
-      </a-assets>
-
-      <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
-      <a-camera position="0 0 0" look-controls="enabled: true; touchEnabled: false"></a-camera>
-
-      <!-- Targets detectores de MindAR (Invisibles, solo se usan para rastrear coordenadas) -->
-      <a-entity mindar-image-target="targetIndex: 0" id="target0"></a-entity>
-      <a-entity mindar-image-target="targetIndex: 1" id="target1"></a-entity>
-      <a-entity mindar-image-target="targetIndex: 2" id="target2"></a-entity>
-      <a-entity mindar-image-target="targetIndex: 3" id="target3"></a-entity>
-
-      <!-- Contenedores Persistentes (Visibles incluso cuando el target se pierde) -->
-      
-      <!-- Target 0: Plaza Central -->
-      <a-entity id="model0" ar-persistent-model="target: #target0" visible="false">
-        <a-gltf-model src="#plazaCentralModel" position="0 -1 0" scale="1.5 1.5 1.5" rotation="0 0 0" animation-mixer></a-gltf-model>
-        <a-text value="Plaza Central - Salazar" color="#e5b920" position="0 1.5 0" scale="0.6 0.6 0.6" align="center" font="https://cdn.aframe.io/fonts/DejaVu-sdf.json" font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png"></a-text>
-      </a-entity>
-
-      <!-- Target 1: Pista de Patinaje -->
-      <a-entity id="model1" ar-persistent-model="target: #target1" visible="false">
-        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#006b3f" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
-        <a-text value="Pista de Patinaje" color="#e5b920" position="-0.7 0.5 0" scale="0.8 0.8 0.8"></a-text>
-      </a-entity>
-
-      <!-- Target 2: Iglesia de San Pablo -->
-      <a-entity id="model2" ar-persistent-model="target: #target2" visible="false">
-        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#e5b920" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
-        <a-text value="Iglesia de San Pablo" color="#006b3f" position="-0.8 0.5 0" scale="0.8 0.8 0.8"></a-text>
-      </a-entity>
-      
-      <!-- Target 3: Santuario Virgen de Belen -->
-      <a-entity id="model3" ar-persistent-model="target: #target3" visible="false">
-        <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#ffffff" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
-        <a-text value="Santuario Virgen de Belen" color="#006b3f" position="-1.0 0.5 0" scale="0.8 0.8 0.8"></a-text>
-      </a-entity>
-
-    </a-scene>
-
-    <script>
-
-      // Lógica de Reinicio ("Volver a Escanear")
-      const resetBtn = document.getElementById('reset-btn');
-      const overlay = document.getElementById('scanning-overlay');
-
-      resetBtn.addEventListener('click', () => {
-        // Mostrar la interfaz de escaneo nuevamente
-        overlay.style.display = 'flex';
-        resetBtn.style.display = 'none';
-
-        // Ocultar todos los modelos persistentes y reiniciar su estado
-        const models = document.querySelectorAll('[ar-persistent-model]');
-        models.forEach(m => {
-          m.removeAttribute('data-active');
-          m.setAttribute('visible', 'false');
-        });
-      });
-
-      // Manejar error en caso de que falten archivos .mind o falle la inicialización
-      const scene = document.querySelector('a-scene');
-      scene.addEventListener('arError', (e) => {
-         console.warn("Falta compilar el archivo TargetPlaza.mind o no hay cámara disponible", e);
-         if (progressText) progressText.innerText = "Error al iniciar la experiencia AR.";
-         document.querySelector('h3').innerText = "Error de Escaneo";
-         document.querySelector('p').innerText = "Verifica que tengas permisos de cámara habilitados y que los recursos sean correctos.";
-      });
-
-
-      // Lógica de volver atrás
-      const backBtn = document.getElementById('back-btn');
-      if (backBtn) {
-        backBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          if (document.referrer && document.referrer.includes(window.location.host)) {
-            window.history.back();
-          } else {
-            window.location.href = 'index.html';
-          }
-        });
-      }
-    </script>
-  </body>
 </html>

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebAR - Escáner Salazar</title>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <!-- MindAR para A-Frame -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <!-- A-Frame Extras para reproducir animaciones GLTF -->
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background-color: #111; font-family: 'Outfit', sans-serif; }
+      
+      /* Header Premium de navegación */
+      #ar-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(0, 75, 43, 0.85); /* Verde institucional semi-transparente */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 2px solid rgba(229, 185, 32, 0.6); /* Dorado institucional */
+        z-index: 100;
+        padding: 10px 20px;
+        box-sizing: border-box;
+      }
+      .ar-header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+      }
+      .back-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        padding: 6px 14px;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: #e5b920; /* Dorado */
+        border-color: rgba(229, 185, 32, 0.6);
+      }
+      .ar-title {
+        margin: 0;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-family: 'Outfit', sans-serif;
+      }
+      @media (max-width: 480px) {
+        .ar-title {
+          font-size: 0.85rem;
+        }
+      }
+
+      /* Capa de Carga Premium (Loader) */
+      #loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #111;
+        z-index: 5000; /* Por encima de todo */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        transition: opacity 0.5s ease;
+        font-family: 'Outfit', sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 400px;
+        width: 100%;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-top: 5px solid #e5b920; /* Dorado */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 25px;
+      }
+      .loader-title {
+        margin: 0 0 10px 0;
+        font-size: 1.5rem;
+        color: #e5b920;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .loader-subtitle {
+        margin: 0 0 25px 0;
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.5;
+      }
+      .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .progress-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #006b3f, #e5b920);
+        border-radius: 10px;
+        transition: width 0.1s ease;
+      }
+      .progress-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #e5b920;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Interfaz de escaneo simulada sobre la cámara */
+      #scanning-overlay {
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%;
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center;
+        z-index: 10; 
+        pointer-events: none; 
+        color: white;
+        background: rgba(0,0,0,0.4);
+        transition: opacity 0.5s ease;
+      }
+      .scan-frame {
+        width: 70vw; 
+        max-width: 300px;
+        height: 70vw; 
+        max-height: 300px;
+        border: 3px dashed rgba(229, 185, 32, 0.8); /* Dorado institucional */
+        border-radius: 20px; 
+        animation: pulse 2s infinite; 
+        margin-bottom: 25px;
+        position: relative;
+      }
+      .scan-frame::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 5px;
+        background-color: rgba(0, 107, 63, 0.8); /* Verde institucional */
+        animation: scanline 3s linear infinite;
+        box-shadow: 0 0 10px rgba(0, 107, 63, 0.8);
+      }
+
+      h3 { margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center; font-size: 1.4rem;}
+      p { margin-top: 0; font-size: 0.95rem; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.8); text-align: center; max-width: 80%; line-height: 1.4;}
+
+      /* Botón de reinicio premium */
+      #reset-btn {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 107, 63, 0.85); /* Verde institucional semi-transparente */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 2px solid rgba(229, 185, 32, 0.6); /* Borde dorado */
+        color: #fff;
+        padding: 12px 24px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border-radius: 50px;
+        cursor: pointer;
+        z-index: 20;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        font-family: 'Outfit', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        pointer-events: auto;
+      }
+      #reset-btn:hover {
+        background: rgba(0, 107, 63, 1);
+        border-color: rgba(229, 185, 32, 1);
+        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 12px 40px rgba(0, 107, 63, 0.4);
+      }
+      #reset-btn:active {
+        transform: translateX(-50%) scale(0.95);
+      }
+
+      /* Instrucción de interactividad al aparecer */
+      #interaction-toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.75);
+        border-left: 4px solid #e5b920;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        z-index: 20;
+        pointer-events: none;
+        display: none;
+        animation: slideDown 0.5s ease forwards;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(0.98); opacity: 0.6; }
+        50% { transform: scale(1.02); opacity: 1; }
+        100% { transform: scale(0.98); opacity: 0.6; }
+      }
+      @keyframes scanline {
+        0% { top: 0; }
+        50% { top: 100%; }
+        100% { top: 0; }
+      }
+      @keyframes slideDown {
+        from { top: 40px; opacity: 0; }
+        to { top: 80px; opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Capa de Carga Premium (Loader) -->
+    <div id="loader-overlay">
+      <div class="loader-content">
+        <div class="spinner"></div>
+        <h2 class="loader-title">Cargando Escáner</h2>
+        <p class="loader-subtitle">Iniciando cámara y preparando el modelo 3D de la Plaza Central...</p>
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <span id="progress-text" class="progress-text">Iniciando descarga: 0%</span>
+      </div>
+    </div>
+
+    <!-- Header premium de navegación de vuelta -->
+    <header id="ar-header">
+      <div class="ar-header-content">
+        <a id="back-btn" class="back-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Volver</span>
+        </a>
+        <h1 class="ar-title">Escáner Salazar</h1>
+      </div>
+    </header>
+
+    <!-- Capa de instrucciones UI -->
+    <div id="scanning-overlay">
+      <div class="scan-frame"></div>
+      <h3>Enfoca el Target</h3>
+      <p>Coloca la cámara frente al afiche o target para iniciar la magia.</p>
+    </div>
+
+    <!-- Mensaje de interactividad -->
+    <div id="interaction-toast">
+      <span>✨ ¡Modelo cargado! Arrastra la pantalla para rotar la plaza y verla en 3D.</span>
+    </div>
+
+    <!-- Botón para reiniciar el escaneo y animación -->
+    <button id="reset-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+      </svg>
+      Volver a Escanear
+    </button>
+
+    <!-- Escena A-Frame + MindAR -->
+    <a-scene 
+      mindar-image="imageTargetSrc: Recursos/TargetsAR/TargetPlaza.mind; autoStart: true; uiScanning: no; uiLoading: no;" 
+      color-space="sRGB" 
+      renderer="colorManagement: true, physicallyCorrectLights: true" 
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <!-- El src se asignará dinámicamente desde JS tras precargar el modelo y reportar progreso -->
+        <a-asset-item id="plazaCentralModel"></a-asset-item>
+      </a-assets>
+
+      <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
+      <a-camera position="0 0 0" look-controls="enabled: true; touchEnabled: false"></a-camera>
+
+      <!-- 1. El objeto detector original (Mantiene la sincronización de MindAR pero no renderiza nada) -->
+      <a-entity mindar-image-target="targetIndex: 0" id="plazaTargetEntity">
+        <!-- Entity vacía, sirve solo para detectar el trigger del target -->
+      </a-entity>
+
+      <!-- 2. Contenedor de la Plaza 3D persistente y flotante en el espacio (Directamente en la escena) -->
+      <a-entity id="worldModelContainer" position="0 -0.5 -2" rotation="0 0 0" visible="false">
+        
+        <!-- Modelo GLTF con animación automática controlada por JS -->
+        <a-gltf-model 
+          id="plazaModel" 
+          src="#plazaCentralModel" 
+          position="0 -0.2 0" 
+          scale="0.04 0.04 0.04" 
+          rotation="0 0 0">
+        </a-gltf-model>
+        
+        <!-- Etiqueta del lugar con tipografía y estética premium -->
+        <a-text 
+          value="Plaza Central - Salazar" 
+          color="#e5b920" 
+          position="0 0.8 0" 
+          scale="0.6 0.6 0.6" 
+          align="center"
+          font="https://cdn.aframe.io/fonts/DejaVu-sdf.json"
+          font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png">
+        </a-text>
+        
+      </a-entity>
+    </a-scene>
+
+    <script>
+      const loaderOverlay = document.getElementById('loader-overlay');
+      const progressBar = document.getElementById('progress-bar');
+      const progressText = document.getElementById('progress-text');
+      const plazaCentralModel = document.getElementById('plazaCentralModel');
+      
+      let modelLoaded = false;
+      let cameraReady = false;
+
+      function checkIfReady() {
+        if (modelLoaded && cameraReady) {
+          loaderOverlay.style.opacity = '0';
+          setTimeout(() => {
+            loaderOverlay.style.display = 'none';
+          }, 500);
+        }
+      }
+
+      const overlay = document.getElementById('scanning-overlay');
+      const targetEntity = document.getElementById('plazaTargetEntity');
+      const worldModelContainer = document.getElementById('worldModelContainer');
+      const plazaModel = document.getElementById('plazaModel');
+      const resetBtn = document.getElementById('reset-btn');
+      const toast = document.getElementById('interaction-toast');
+      
+      let animationActivated = false;
+
+      // Evento: Target Encontrado
+      targetEntity.addEventListener("targetFound", event => {
+        if (!animationActivated) {
+          animationActivated = true;
+          
+          // Ocultar capa de escaneo
+          overlay.style.opacity = '0';
+          setTimeout(() => {
+            overlay.style.display = 'none';
+          }, 500);
+
+          // Mostrar el modelo en el espacio (Flotante)
+          worldModelContainer.setAttribute('visible', 'true');
+          
+          // Activar e iniciar la animación del GLB una sola vez
+          plazaModel.removeAttribute('animation-mixer'); // Limpiar componente previo si existe
+          plazaModel.setAttribute('animation-mixer', {
+            clip: '*', 
+            loop: 'once', 
+            clampWhenFinished: true
+          });
+
+          // Mostrar botón de reinicio
+          resetBtn.style.display = 'flex';
+
+          // Mostrar aviso de interacción para arrastrar/rotar
+          toast.style.display = 'block';
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.style.display = 'none'; toast.style.opacity = '1'; }, 500);
+          }, 6000);
+        }
+      });
+
+      // Lógica de Reinicio ("Volver a Escanear")
+      resetBtn.addEventListener('click', () => {
+        animationActivated = false;
+        
+        // Ocultar modelo y botón
+        worldModelContainer.setAttribute('visible', 'false');
+        resetBtn.style.display = 'none';
+        toast.style.display = 'none';
+
+        // Detener y remover el mezclador de animación
+        plazaModel.removeAttribute('animation-mixer');
+
+        // Resetear la rotación del contenedor a su valor original
+        worldModelContainer.setAttribute('rotation', '0 0 0');
+
+        // Mostrar de nuevo la capa de escaneo con transición suave
+        overlay.style.display = 'flex';
+        setTimeout(() => {
+          overlay.style.opacity = '1';
+        }, 50);
+      });
+
+      // Lógica de Rotación por Arrastre (Mouse & Touch) en el Contenedor
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+
+      // Soporte Mouse
+      window.addEventListener('mousedown', e => {
+        if (!worldModelContainer.getAttribute('visible')) return;
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+      
+      window.addEventListener('mousemove', e => {
+        if (!isDragging || !worldModelContainer.getAttribute('visible')) return;
+        
+        const deltaMove = {
+          x: e.clientX - previousMousePosition.x,
+          y: e.clientY - previousMousePosition.y
+        };
+        
+        const currentRotation = worldModelContainer.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+        
+        worldModelContainer.setAttribute('rotation', {
+          x: currentRotation.x,
+          y: currentRotation.y + deltaMove.x * 0.4, // Sensibilidad
+          z: currentRotation.z
+        });
+        
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+      
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // Soporte Táctil (Móviles)
+      window.addEventListener('touchstart', e => {
+        if (!worldModelContainer.getAttribute('visible')) return;
+        if (e.touches.length === 1) {
+          isDragging = true;
+          previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      }, { passive: true });
+      
+      window.addEventListener('touchmove', e => {
+        if (!isDragging || !worldModelContainer.getAttribute('visible') || e.touches.length !== 1) return;
+        
+        const deltaMove = {
+          x: e.touches[0].clientX - previousMousePosition.x,
+          y: e.touches[0].clientY - previousMousePosition.y
+        };
+        
+        const currentRotation = worldModelContainer.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+        
+        worldModelContainer.setAttribute('rotation', {
+          x: currentRotation.x,
+          y: currentRotation.y + deltaMove.x * 0.4, // Sensibilidad
+          z: currentRotation.z
+        });
+        
+        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }, { passive: true });
+      
+      window.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+
+      // Manejar error en caso de que falten archivos .mind o falle la inicialización
+      const scene = document.querySelector('a-scene');
+      scene.addEventListener('arError', (e) => {
+         console.warn("Falta compilar el archivo TargetPlaza.mind o no hay cámara disponible", e);
+         if (progressText) progressText.innerText = "Error al iniciar la experiencia AR.";
+         document.querySelector('h3').innerText = "Error de Escaneo";
+         document.querySelector('p').innerText = "Verifica que tengas permisos de cámara habilitados y que los recursos sean correctos.";
+      });
+
+      // Escuchar el evento arReady de MindAR para indicar que la cámara e inicialización del tracking están listas
+      scene.addEventListener('arReady', () => {
+        cameraReady = true;
+        checkIfReady();
+      });
+
+      // Precarga del modelo 3D en segundo plano para evitar fallos de carga y reportar progreso
+      const modelUrl = 'Recursos/Animaciones/PlazaCentral.glb';
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', modelUrl, true);
+      xhr.responseType = 'blob';
+
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          progressBar.style.width = percentComplete + '%';
+          progressText.innerText = `Cargando Plaza Central: ${percentComplete}%`;
+        } else {
+          progressText.innerText = 'Cargando Modelo 3D (30MB)...';
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const blob = xhr.response;
+          const objectURL = URL.createObjectURL(blob);
+          plazaCentralModel.setAttribute('src', objectURL);
+          modelLoaded = true;
+          progressText.innerText = 'Iniciando cámara y tracker...';
+          checkIfReady();
+        } else {
+          progressText.innerText = 'Error al descargar modelo 3D.';
+        }
+      };
+
+      xhr.onerror = () => {
+        progressText.innerText = 'Error de conexión al descargar modelo.';
+      };
+
+      xhr.send();
+
+      // Lógica de volver atrás
+      const backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (document.referrer && document.referrer.includes(window.location.host)) {
+            window.history.back();
+          } else {
+            window.location.href = 'index.html';
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

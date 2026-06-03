@@ -207,7 +207,7 @@
 
     <!-- Mensaje de interactividad -->
     <div id="interaction-toast">
-      <span>✨ ¡Modelo cargado! Arrastra la pantalla para rotar la plaza y verla en 3D.</span>
+      <span>✨ ¡Magia activada! El modelo seguirá visible aunque dejes de apuntar.</span>
     </div>
 
     <!-- Botón para reiniciar el escaneo y animación -->
@@ -217,6 +217,26 @@
       </svg>
       Volver a Escanear
     </button>
+
+    <script>
+      AFRAME.registerComponent('persistent-target', {
+        init: function () {
+          this.el.addEventListener('targetFound', () => {
+            this.el.setAttribute('data-found', 'true');
+            document.getElementById('scanning-overlay').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'flex';
+            document.getElementById('interaction-toast').style.display = 'block';
+            setTimeout(() => { document.getElementById('interaction-toast').style.display = 'none'; }, 6000);
+          });
+          this.el.addEventListener('targetLost', () => {
+            if (this.el.getAttribute('data-found') === 'true') {
+              // MindAR oculta el elemento por defecto. Lo forzamos a mostrarse de nuevo.
+              setTimeout(() => { this.el.setAttribute('visible', 'true'); }, 10);
+            }
+          });
+        }
+      });
+    </script>
 
     <!-- Escena A-Frame + MindAR -->
     <a-scene 
@@ -233,185 +253,50 @@
       <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
       <a-camera position="0 0 0" look-controls="enabled: true; touchEnabled: false"></a-camera>
 
-      <!-- 1. El objeto detector original (Mantiene la sincronización de MindAR pero no renderiza nada) -->
-      <a-entity mindar-image-target="targetIndex: 0" id="plazaTargetEntity">
+      <!-- Target 0: Plaza Central -->
+      <a-entity mindar-image-target="targetIndex: 0" persistent-target>
+        <!-- Modelo GLTF con animación automática -->
+        <a-gltf-model src="#plazaCentralModel" position="0 0 0" scale="2.5 2.5 2.5" rotation="90 0 0" animation-mixer></a-gltf-model>
+        <a-text value="Plaza Central - Salazar" color="#e5b920" position="0 1.5 0" scale="0.6 0.6 0.6" align="center" font="https://cdn.aframe.io/fonts/DejaVu-sdf.json" font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png"></a-text>
       </a-entity>
 
       <!-- Target 1: Pista de Patinaje -->
-      <a-entity mindar-image-target="targetIndex: 1">
+      <a-entity mindar-image-target="targetIndex: 1" persistent-target>
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#006b3f" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Pista de Patinaje" color="#e5b920" position="-0.7 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
 
       <!-- Target 2: Iglesia de San Pablo -->
-      <a-entity mindar-image-target="targetIndex: 2">
+      <a-entity mindar-image-target="targetIndex: 2" persistent-target>
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#e5b920" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Iglesia de San Pablo" color="#006b3f" position="-0.8 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
       
       <!-- Target 3: Santuario Virgen de Belen -->
-      <a-entity mindar-image-target="targetIndex: 3">
+      <a-entity mindar-image-target="targetIndex: 3" persistent-target>
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#ffffff" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Santuario Virgen de Belen" color="#006b3f" position="-1.0 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
 
-      <!-- 2. Contenedor de la Plaza 3D persistente y flotante en el espacio (Directamente en la escena) -->
-      <a-entity id="worldModelContainer" position="0 -0.5 -2" rotation="0 0 0" visible="false">
-        
-        <!-- Modelo GLTF con animación automática controlada por JS (escala aumentada) -->
-        <a-gltf-model 
-          id="plazaModel" 
-          src="#plazaCentralModel" 
-          position="0 -0.2 0" 
-          scale="2.0 2.0 2.0" 
-          rotation="0 0 0">
-        </a-gltf-model>
-        
-        <!-- Etiqueta del lugar con tipografía y estética premium -->
-        <a-text 
-          value="Plaza Central - Salazar" 
-          color="#e5b920" 
-          position="0 1.5 0" 
-          scale="0.6 0.6 0.6" 
-          align="center"
-          font="https://cdn.aframe.io/fonts/DejaVu-sdf.json"
-          font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png">
-        </a-text>
-        
-      </a-entity>
     </a-scene>
 
     <script>
 
-      const overlay = document.getElementById('scanning-overlay');
-      const targetEntity = document.getElementById('plazaTargetEntity');
-      const worldModelContainer = document.getElementById('worldModelContainer');
-      const plazaModel = document.getElementById('plazaModel');
-      const resetBtn = document.getElementById('reset-btn');
-      const toast = document.getElementById('interaction-toast');
-      
-      let animationActivated = false;
-
-      // Evento: Target Encontrado
-      targetEntity.addEventListener("targetFound", event => {
-        if (!animationActivated) {
-          animationActivated = true;
-          
-          // Ocultar capa de escaneo
-          overlay.style.opacity = '0';
-          setTimeout(() => {
-            overlay.style.display = 'none';
-          }, 500);
-
-          // Mostrar el modelo en el espacio (Flotante)
-          worldModelContainer.setAttribute('visible', 'true');
-          
-          // Activar e iniciar la animación del GLB una sola vez
-          plazaModel.removeAttribute('animation-mixer'); // Limpiar componente previo si existe
-          plazaModel.setAttribute('animation-mixer', {
-            clip: '*', 
-            loop: 'once', 
-            clampWhenFinished: true
-          });
-
-          // Mostrar botón de reinicio
-          resetBtn.style.display = 'flex';
-
-          // Mostrar aviso de interacción para arrastrar/rotar
-          toast.style.display = 'block';
-          setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => { toast.style.display = 'none'; toast.style.opacity = '1'; }, 500);
-          }, 6000);
-        }
-      });
-
       // Lógica de Reinicio ("Volver a Escanear")
+      const resetBtn = document.getElementById('reset-btn');
+      const overlay = document.getElementById('scanning-overlay');
+
       resetBtn.addEventListener('click', () => {
-        animationActivated = false;
-        
-        // Ocultar modelo y botón
-        worldModelContainer.setAttribute('visible', 'false');
-        resetBtn.style.display = 'none';
-        toast.style.display = 'none';
-
-        // Detener y remover el mezclador de animación
-        plazaModel.removeAttribute('animation-mixer');
-
-        // Resetear la rotación del contenedor a su valor original
-        worldModelContainer.setAttribute('rotation', '0 0 0');
-
-        // Mostrar de nuevo la capa de escaneo con transición suave
+        // Mostrar la interfaz de escaneo nuevamente
         overlay.style.display = 'flex';
-        setTimeout(() => {
-          overlay.style.opacity = '1';
-        }, 50);
-      });
+        resetBtn.style.display = 'none';
 
-      // Lógica de Rotación por Arrastre (Mouse & Touch) en el Contenedor
-      let isDragging = false;
-      let previousMousePosition = { x: 0, y: 0 };
-
-      // Soporte Mouse
-      window.addEventListener('mousedown', e => {
-        if (!worldModelContainer.getAttribute('visible')) return;
-        isDragging = true;
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-      });
-      
-      window.addEventListener('mousemove', e => {
-        if (!isDragging || !worldModelContainer.getAttribute('visible')) return;
-        
-        const deltaMove = {
-          x: e.clientX - previousMousePosition.x,
-          y: e.clientY - previousMousePosition.y
-        };
-        
-        const currentRotation = worldModelContainer.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
-        
-        worldModelContainer.setAttribute('rotation', {
-          x: currentRotation.x,
-          y: currentRotation.y + deltaMove.x * 0.4, // Sensibilidad
-          z: currentRotation.z
+        // Ocultar todos los modelos persistentes y reiniciar su estado
+        const targets = document.querySelectorAll('[persistent-target]');
+        targets.forEach(t => {
+          t.removeAttribute('data-found');
+          t.setAttribute('visible', 'false');
         });
-        
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-      });
-      
-      window.addEventListener('mouseup', () => {
-        isDragging = false;
-      });
-
-      // Soporte Táctil (Móviles)
-      window.addEventListener('touchstart', e => {
-        if (!worldModelContainer.getAttribute('visible')) return;
-        if (e.touches.length === 1) {
-          isDragging = true;
-          previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        }
-      }, { passive: true });
-      
-      window.addEventListener('touchmove', e => {
-        if (!isDragging || !worldModelContainer.getAttribute('visible') || e.touches.length !== 1) return;
-        
-        const deltaMove = {
-          x: e.touches[0].clientX - previousMousePosition.x,
-          y: e.touches[0].clientY - previousMousePosition.y
-        };
-        
-        const currentRotation = worldModelContainer.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
-        
-        worldModelContainer.setAttribute('rotation', {
-          x: currentRotation.x,
-          y: currentRotation.y + deltaMove.x * 0.4, // Sensibilidad
-          z: currentRotation.z
-        });
-        
-        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      }, { passive: true });
-      
-      window.addEventListener('touchend', () => {
-        isDragging = false;
       });
 
       // Manejar error en caso de que falten archivos .mind o falle la inicialización

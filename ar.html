@@ -219,21 +219,34 @@
     </button>
 
     <script>
-      AFRAME.registerComponent('persistent-target', {
+      AFRAME.registerComponent('ar-persistent-model', {
+        schema: { target: { type: 'selector' } },
         init: function () {
-          this.el.addEventListener('targetFound', () => {
-            this.el.setAttribute('data-found', 'true');
+          this.targetEl = this.data.target;
+          this.targetEl.addEventListener('targetFound', () => {
+            this.el.setAttribute('visible', 'true');
+            this.el.setAttribute('data-active', 'true');
+            
+            // Ocultar overlay de escaneo y mostrar controles
             document.getElementById('scanning-overlay').style.display = 'none';
             document.getElementById('reset-btn').style.display = 'flex';
-            document.getElementById('interaction-toast').style.display = 'block';
-            setTimeout(() => { document.getElementById('interaction-toast').style.display = 'none'; }, 6000);
+            
+            // Mostrar notificación breve
+            const toast = document.getElementById('interaction-toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 6000);
           });
-          this.el.addEventListener('targetLost', () => {
-            if (this.el.getAttribute('data-found') === 'true') {
-              // MindAR oculta el elemento por defecto. Lo forzamos a mostrarse de nuevo.
-              setTimeout(() => { this.el.setAttribute('visible', 'true'); }, 10);
-            }
-          });
+        },
+        tick: function () {
+          // Si el target original de MindAR está visible, sincronizamos su posición 3D.
+          // Cuando se deja de apuntar, MindAR lo hace invisible, así que este tick dejará de actualizar 
+          // la posición y el modelo se quedará "congelado" y persistente en la pantalla.
+          if (this.targetEl.getAttribute('visible') && this.el.getAttribute('data-active') === 'true') {
+            const target3D = this.targetEl.object3D;
+            this.el.object3D.position.copy(target3D.position);
+            this.el.object3D.rotation.copy(target3D.rotation);
+            this.el.object3D.scale.copy(target3D.scale);
+          }
         }
       });
     </script>
@@ -253,27 +266,34 @@
       <!-- Cámara con look-controls para permitir mover el celular y ver alrededor -->
       <a-camera position="0 0 0" look-controls="enabled: true; touchEnabled: false"></a-camera>
 
+      <!-- Targets detectores de MindAR (Invisibles, solo se usan para rastrear coordenadas) -->
+      <a-entity mindar-image-target="targetIndex: 0" id="target0"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 1" id="target1"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 2" id="target2"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 3" id="target3"></a-entity>
+
+      <!-- Contenedores Persistentes (Visibles incluso cuando el target se pierde) -->
+      
       <!-- Target 0: Plaza Central -->
-      <a-entity mindar-image-target="targetIndex: 0" persistent-target>
-        <!-- Modelo GLTF con animación automática (Posicionado más abajo y con escala ajustada) -->
+      <a-entity id="model0" ar-persistent-model="target: #target0" visible="false">
         <a-gltf-model src="#plazaCentralModel" position="0 -1 0" scale="1.5 1.5 1.5" rotation="0 0 0" animation-mixer></a-gltf-model>
         <a-text value="Plaza Central - Salazar" color="#e5b920" position="0 1.5 0" scale="0.6 0.6 0.6" align="center" font="https://cdn.aframe.io/fonts/DejaVu-sdf.json" font-image="https://cdn.aframe.io/fonts/DejaVu-sdf.png"></a-text>
       </a-entity>
 
       <!-- Target 1: Pista de Patinaje -->
-      <a-entity mindar-image-target="targetIndex: 1" persistent-target>
+      <a-entity id="model1" ar-persistent-model="target: #target1" visible="false">
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#006b3f" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Pista de Patinaje" color="#e5b920" position="-0.7 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
 
       <!-- Target 2: Iglesia de San Pablo -->
-      <a-entity mindar-image-target="targetIndex: 2" persistent-target>
+      <a-entity id="model2" ar-persistent-model="target: #target2" visible="false">
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#e5b920" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Iglesia de San Pablo" color="#006b3f" position="-0.8 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
       
       <!-- Target 3: Santuario Virgen de Belen -->
-      <a-entity mindar-image-target="targetIndex: 3" persistent-target>
+      <a-entity id="model3" ar-persistent-model="target: #target3" visible="false">
         <a-box position="0 0 0.1" depth="0.5" height="0.5" width="0.5" color="#ffffff" opacity="0.9" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
         <a-text value="Santuario Virgen de Belen" color="#006b3f" position="-1.0 0.5 0" scale="0.8 0.8 0.8"></a-text>
       </a-entity>
@@ -292,10 +312,10 @@
         resetBtn.style.display = 'none';
 
         // Ocultar todos los modelos persistentes y reiniciar su estado
-        const targets = document.querySelectorAll('[persistent-target]');
-        targets.forEach(t => {
-          t.removeAttribute('data-found');
-          t.setAttribute('visible', 'false');
+        const models = document.querySelectorAll('[ar-persistent-model]');
+        models.forEach(m => {
+          m.removeAttribute('data-active');
+          m.setAttribute('visible', 'false');
         });
       });
 

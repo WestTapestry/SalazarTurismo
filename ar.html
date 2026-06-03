@@ -70,81 +70,6 @@
         }
       }
 
-      /* Capa de Carga Premium (Loader) */
-      #loader-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: #111;
-        z-index: 5000; /* Por encima de todo */
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        transition: opacity 0.5s ease;
-        font-family: 'Outfit', sans-serif;
-        padding: 20px;
-        box-sizing: border-box;
-      }
-      .loader-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        max-width: 400px;
-        width: 100%;
-      }
-      .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid rgba(255, 255, 255, 0.1);
-        border-top: 5px solid #e5b920; /* Dorado */
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 25px;
-      }
-      .loader-title {
-        margin: 0 0 10px 0;
-        font-size: 1.5rem;
-        color: #e5b920;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .loader-subtitle {
-        margin: 0 0 25px 0;
-        font-size: 0.95rem;
-        color: rgba(255, 255, 255, 0.7);
-        line-height: 1.5;
-      }
-      .progress-bar-container {
-        width: 100%;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 12px;
-      }
-      .progress-bar {
-        width: 0%;
-        height: 100%;
-        background: linear-gradient(90deg, #006b3f, #e5b920);
-        border-radius: 10px;
-        transition: width 0.1s ease;
-      }
-      .progress-text {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #e5b920;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
       /* Interfaz de escaneo simulada sobre la cámara */
       #scanning-overlay {
         position: fixed; 
@@ -258,18 +183,6 @@
     </style>
   </head>
   <body>
-    <!-- Capa de Carga Premium (Loader) -->
-    <div id="loader-overlay">
-      <div class="loader-content">
-        <div class="spinner"></div>
-        <h2 class="loader-title">Cargando Escáner</h2>
-        <p class="loader-subtitle">Iniciando cámara y preparando el modelo 3D de la Plaza Central...</p>
-        <div class="progress-bar-container">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
-        <span id="progress-text" class="progress-text">Iniciando descarga: 0%</span>
-      </div>
-    </div>
 
     <!-- Header premium de navegación de vuelta -->
     <header id="ar-header">
@@ -369,18 +282,6 @@
     </a-scene>
 
     <script>
-      const loaderOverlay = document.getElementById('loader-overlay');
-      const progressBar = document.getElementById('progress-bar');
-      const progressText = document.getElementById('progress-text');
-      const plazaCentralModel = document.getElementById('plazaCentralModel');
-
-      // A-Frame ya maneja la carga de <a-assets>. Ocultaremos el loader en cuanto el AR esté listo.
-      function checkIfReady() {
-        loaderOverlay.style.opacity = '0';
-        setTimeout(() => {
-          loaderOverlay.style.display = 'none';
-        }, 500);
-      }
 
       const overlay = document.getElementById('scanning-overlay');
       const targetEntity = document.getElementById('plazaTargetEntity');
@@ -522,12 +423,6 @@
          document.querySelector('p').innerText = "Verifica que tengas permisos de cámara habilitados y que los recursos sean correctos.";
       });
 
-      // Escuchar el evento arReady de MindAR para indicar que la cámara e inicialización del tracking están listas
-      scene.addEventListener('arReady', () => {
-        if (progressText) progressText.innerText = '¡Cámara Lista!';
-        if (progressBar) progressBar.style.width = '100%';
-        checkIfReady();
-      });
 
       // Lógica de volver atrás
       const backBtn = document.getElementById('back-btn');
